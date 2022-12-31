@@ -1,0 +1,111 @@
+var w = 1400,
+    h = 700;
+const url = 'https://cdn.freecodecamp.org/testable-projects-fcc/data/tree_map/kickstarter-funding-data.json'
+//Tooltip
+// Append SVG
+const svg = d3.select('.visHolder')
+.append('svg')
+.attr('width', w)
+.attr('height', h);
+const tooltip = d3
+.select('.visHolder')
+.append('div')
+.attr('id', 'tooltip')
+.style('opacity', '0')
+const render = data => {
+    const handleMouseOver = (e, i) => {
+        tooltip
+        .attr('data-value', i.data.value)
+        .style('opacity', '1')
+        .style('left', `${e.x}px`)
+        .style('top', `${e.y}px`)
+        .html(`<p>${i.data.name}, ${i.data.category} <br/>
+        ${i.data.value}`)
+
+    }
+    const handleMouseOut = () => {
+        d3.select('#tooltip')
+        .style('opacity', '0') 
+}
+    const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+    const treemap = d3.treemap()
+    .size([w, h])
+    .padding(1)
+    
+    const root = d3.hierarchy(data).eachBefore((d) => {
+      d.data.id = (d.parent ? d.parent.data.id + '.' : '') + d.data.name;
+    })
+    .sum(d => d.value)
+    .sort(function (a, b) {
+      return b.height - a.height || b.value - a.value;
+    });
+
+    treemap(root);
+    const leaf = svg.selectAll('g')
+    .data(root.leaves())
+    .enter().append('g')
+    .attr('transform', d => `translate(${d.x0}, ${d.y0})`)
+
+    const tile = leaf.append('rect')
+    .attr('class', 'tile')
+    .attr('data-name', d => d.data.name)
+    .attr('data-category', d => d.data.category)
+    .attr('data-value', d => d.data.value)
+    .attr('width', d => d.x1 - d.x0)
+    .attr('height', d => d.y1 - d.y0)
+    .attr('fill', d => color(d.data.category))
+    .on('mouseover', handleMouseOver)
+    .on('mouseout', handleMouseOut)
+
+    leaf.append('text').selectAll('tspan')
+    .data(d => d.data.name.split(/(?=[A-Z][a-z])|\s+/g))
+    .enter().append('tspan')
+    .style('font-size', '0.7rem')
+    .attr('x', 4)
+    .attr('y', (d, i) => 13 + i * 10)
+    .text(d => d)
+    
+
+    // Create Legend
+    const catagories = root.leaves().map(n => n.data.category).filter((item, idx, arr) => arr.indexOf(item) === idx)
+    const blockSize = 20;
+    const legendWidth = 200;
+    const legendHeight = (blockSize + 2) * catagories.length;
+
+    const legend = d3.select('.visHolder')
+    .append('svg')
+    .attr('id', 'legend')
+    .attr('class', 'legend')
+    .attr('width', legendWidth)
+    .attr('height', legendHeight)
+
+    legend.selectAll('rect')
+    .data(catagories)
+    .enter().append('rect')
+    .attr('class', 'legend-item')
+    .attr('fill', color)
+    .attr('x', blockSize / 2)
+    .attr('y', (d, i) => i * (blockSize + 1) + 10)
+    .attr('width', blockSize)
+    .attr('height', blockSize)
+
+    legend.append('g')
+    .selectAll('text')
+    .data(catagories)
+    .enter().append('text')
+    .attr('fill', 'black')
+    .attr('x', blockSize * 2)
+    .attr('y', (d, i) => i * (blockSize + 1) + 25)
+    .text(d => d)
+
+
+  
+
+}
+
+
+d3.json(url, (e, data) => {
+    if(e) console.error(e)
+    else render(data)
+})
